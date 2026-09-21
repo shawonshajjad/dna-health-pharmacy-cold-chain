@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  NURSE
+  PHARMACIST
+}
+
+enum RequestStatus {
+  REQUESTED
+  VERIFYING
+  VERIFIED
+  PACKED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  REJECTED
+}
+
+enum Priority {
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model User {
+  id            Int                 @id @default(autoincrement())
+  name          String
+  email         String              @unique
+  passwordHash  String
+  role          Role
+  ward          String?
+  createdAt     DateTime            @default(now())
+  requests      MedicationRequest[] @relation("RequestedBy")
+  processed     MedicationRequest[] @relation("ProcessedBy")
+  audits        AuditLog[]
+  notifications Notification[]
+}
+
+model Patient {
+  id            Int                 @id @default(autoincrement())
+  mrn           String              @unique
+  displayName   String
+  ward          String
+  room          String?
+  fhirPatientId String?
+  allergies     String?
+  requests      MedicationRequest[]
+}
+
+model MedicationRequest {
+  id                      Int            @id @default(autoincrement())
+  requestNo               String         @unique
+  patientId               Int
+  requestedById           Int
+  processedById           Int?
+  medicationName          String
+  strength                String?
+  dose                    String
+  route                   String?
+  quantity                Int            @default(1)
+  priority                Priority       @default(NORMAL)
+  status                  RequestStatus  @default(REQUESTED)
+  fhirMedicationRequestId String?
+  rxnormRxcui             String?
+  rxnormValidated         Boolean        @default(false)
+  coldChain               Boolean        @default(true)
+  packedAt                DateTime?
+  dispatchedAt            DateTime?
+  deliveredAt             DateTime?
+  courierName             String?
+  eta                     DateTime?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+  patient                 Patient        @relation(fields: [patientId], references: [id])
+  requestedBy             User           @relation("RequestedBy", fields: [requestedById], references: [id])
+  processedBy             User?          @relation("ProcessedBy", fields: [processedById], references: [id])
+  notifications           Notification[]
+}
+
+model Notification {
+  id        Int                @id @default(autoincrement())
+  userId    Int
+  requestId Int?
+  title     String
+  message   String
+  read      Boolean            @default(false)
+  createdAt DateTime           @default(now())
+  user      User               @relation(fields: [userId], references: [id])
+  request   MedicationRequest? @relation(fields: [requestId], references: [id])
+}
+
+model AuditLog {
+  id           Int      @id @default(autoincrement())
+  userId       Int?
+  action       String
+  entityType   String
+  entityId     String
+  detail       Json?
+  hash         String
+  previousHash String?
+  createdAt    DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id])
+}
+
+model Inventory {
+  id             Int      @id @default(autoincrement())
+  medicationName String
+  strength       String?
+  rxnormRxcui    String?
+  lotNumber      String
+  quantity       Int
+  reorderLevel   Int      @default(5)
+  refrigerator   String?
+  minTemp        Float    @default(2)
+  maxTemp        Float    @default(8)
+  expiryDate     DateTime?
+  updatedAt      DateTime @updatedAt
+}

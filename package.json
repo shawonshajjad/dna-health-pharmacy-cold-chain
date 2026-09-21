@@ -1,0 +1,3 @@
+{
+  "name":"dna-health-pharmacy-cold-chain","private":true,"scripts":{"install:all":"npm --prefix server install && npm --prefix client install","dev":"concurrently \"npm --prefix server run dev\" \"npm --prefix client run dev\"","build":"npm --prefix server run build && npm --prefix client run build"},"devDependencies":{"concurrently":"^9.0.0"}
+}
