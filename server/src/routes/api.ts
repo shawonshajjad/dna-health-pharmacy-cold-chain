@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { Role, RequestStatus } from "@prisma/client";
 import { z } from "zod";
@@ -28,8 +29,8 @@ const r = Router();
 r.use(auth);
 
 r.get("/me", (req, res) => res.json(req.user));
-r.get("/patients", async (_, res) =>
-  res.json(await prisma.patient.findMany({ orderBy: { mrn: "asc" } })),
+r.get("/patients", allow(Role.NURSE), async (_, res) =>
+  res.json(await prisma.patient.findMany({ select: { id:true, mrn:true, displayName:true, ward:true, room:true, fhirPatientId:true }, orderBy: { mrn: "asc" } })),
 );
 r.get("/inventory", allow(Role.PHARMACIST), async (_, res) =>
   res.json(
@@ -142,7 +143,7 @@ r.post("/requests", allow(Role.NURSE), async (req, res) => {
         error:
           rx.error || "RxNorm could not validate the prescription medication",
       });
-    const count = await prisma.medicationRequest.count();
+    const requestNo = `REQ-${Date.now()}-${randomUUID().slice(0, 8)}`;
     const row = await prisma.medicationRequest.create({
       data: {
         patientId: patient.id,
@@ -154,7 +155,7 @@ r.post("/requests", allow(Role.NURSE), async (req, res) => {
         quantity: x.data.quantity,
         priority: x.data.priority,
         fhirMedicationRequestId: s.id,
-        requestNo: `REQ-${1001 + count}`,
+        requestNo,
         requestedById: req.user!.id,
       },
     });
